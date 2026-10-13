@@ -1,0 +1,12 @@
+{
+  "devDependencies": {
+    "@wdio/appium-service": "^10.0.0",
+    "@wdio/cli": "^10.0.0",
+    "@wdio/local-runner": "^10.0.0",
+    "@wdio/mocha-framework": "^10.0.0",
+    "@wdio/spec-reporter": "^10.0.0"
+  },
+  "dependencies": {
+    "wdio-testgen-from-gherkin-js": "^1.0.10"
+  }
+}

@@ -1,0 +1,125 @@
+pipeline {
+    agent any
+
+    parameters {
+        choice(name: 'DEVICE', choices: ['pixel9Pro', 'pixel10ProFold'], description: 'Eszköz')
+    }
+
+    triggers {
+            cron('H 2 * * 1-5')
+        }
+
+    options {
+        skipDefaultCheckout()
+        timeout(time: 60, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        disableConcurrentBuilds()
+        timestamps()
+    }
+
+    environment {
+        REPORT_ROOT = 'C:\\JenkinsReports\\appium'
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                 git url: 'https://github.com/<felhasznalonev>/PracticeTestAutomation.git'
+                    branch: 'main'
+            }
+        }
+
+        stage('Download app') {
+            steps {
+                powershell '''
+                    $dir = "appium\\src\\test\\resources\\app"
+                    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+                    $apk = Join-Path $dir "android.wdio.native.app.v2.2.0.apk"
+                    if (-not (Test-Path $apk)) {
+                        Invoke-WebRequest -Uri "<az APK közvetlen letöltési linkje a GitHub releases oldalról>" -OutFile $apk
+                    }
+                '''
+            }
+        }
+
+         stage('Compile') {
+            steps {
+                bat 'mvn -B -pl appium -am -DskipTests clean compile'
+            }
+        }
+
+        stage('Start emulator') {
+            steps {
+                powershell '''
+                    Start-Process emulator -ArgumentList "-avd","Pixel_9_Pro","-no-snapshot-save","-no-boot-anim"
+                    adb wait-for-device
+                    $deadline = (Get-Date).AddMinutes(4)
+                    do {
+                        Start-Sleep -Seconds 5
+                        $booted = (adb shell getprop sys.boot_completed 2>$null)
+                    } until ($booted -match "1" -or (Get-Date) -gt $deadline)
+                    if ($booted -notmatch "1") { throw "Emulator did not boot in time" }
+                '''
+            }
+        }
+
+        stage('Mobile tests') {
+            steps {
+                bat "mvn -B -pl appium -am test -Ddevice=${params.DEVICE}"
+            }
+        }
+
+        stage('Security scan') {
+            when { expression { params.SECURITY_SCAN } }
+            steps {
+                bat 'mvn -B -pl appium org.owasp:dependency-check-maven:check'
+            }
+        }
+
+        stage('Send Notification') {
+            steps {
+                slackSend(channel: env.SLACK_CHANNEL,
+                          message: "✅ Tests passed for build ${env.BUILD_NUMBER}")
+            }
+        }
+    }
+
+    post {
+        always {
+            // 1. Teszteredmény-grafikon a Jenkinsben
+            junit allowEmptyResults: true, testResults: 'appium/target/surefire-reports/*.xml'
+
+            // 2. Fájlok megőrzése a buildhez (Jenkinsen belül, letölthető)
+            archiveArtifacts allowEmptyArchive: true,
+                artifacts: 'appium/target/cucumber-report.html, appium/target/screenshots/**, appium/target/appium-server.log'
+
+            // 3. HTML riport link a build oldalán
+            publishHTML(target: [
+                reportDir: 'appium/target', reportFiles: 'cucumber-report.html',
+                reportName: 'Cucumber report', keepAll: true,
+                alwaysLinkToLastBuild: true, allowMissing: true
+            ])
+
+            // 4. Másolat egy saját mappába a gépen: C:\JenkinsReports\appium\<build szám>
+            powershell '''
+                $dest = Join-Path $env:REPORT_ROOT $env:BUILD_NUMBER
+                New-Item -ItemType Directory -Force -Path $dest | Out-Null
+                foreach ($p in "appium\\target\\cucumber-report.html", "appium\\target\\screenshots", "appium\\target\\surefire-reports") {
+                    if (Test-Path $p) { Copy-Item $p -Destination $dest -Recurse -Force }
+                }
+                Write-Host "Report copied to $dest"
+            '''
+
+            // 5. Takarítás
+            powershell 'adb emu kill; exit 0'
+        }
+        success {
+            echo "✅ Tests passed – build #${env.BUILD_NUMBER}"
+            // slackSend(channel: '#qa-notifications', message: "✅ Tests passed – build #${env.BUILD_NUMBER}")
+        }
+        failure {
+            echo "❌ Build #${env.BUILD_NUMBER} failed – ${env.BUILD_URL}"
+            // slackSend(channel: '#qa-notifications', message: "❌ Build #${env.BUILD_NUMBER} failed: ${env.BUILD_URL}")
+        }
+    }
+}
