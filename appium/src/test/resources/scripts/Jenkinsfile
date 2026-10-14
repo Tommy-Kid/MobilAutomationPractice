@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     parameters {
-        choice(name: 'DEVICE', choices: ['pixel9Pro', 'pixel10ProFold'], description: 'Eszköz')
+        choice(name: 'DEVICE', choices: ['pixel10ProFold', 'pixel9Pro'], description: 'Eszköz')
     }
 
     triggers {
@@ -10,22 +10,39 @@ pipeline {
         }
 
     options {
-        skipDefaultCheckout()
         timeout(time: 60, unit: 'MINUTES')
         buildDiscarder(logRotator(numToKeepStr: '20'))
         disableConcurrentBuilds()
         timestamps()
     }
 
-    environment {
-        REPORT_ROOT = 'C:\\JenkinsReports\\appium'
-    }
+     environment {
+            ANDROID_HOME = 'C:\\Users\\ladan\\AppData\\Local\\Android\\Sdk'
+            ADB          = 'C:\\Users\\ladan\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe'
+            EMULATOR     = 'C:\\Users\\ladan\\AppData\\Local\\Android\\Sdk\\emulator\\emulator.exe'
+            MVN          = 'C:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.2.3\\plugins\\maven-plugin\\lib\\maven3\\bin\\mvn.cmd'
+            APK_URL      = 'https://github.com/webdriverio/native-demo-app/releases/download/v2.2.0/android.wdio.native.app.v2.2.0.apk'
+            REPORT_ROOT  = 'C:\\JenkinsReports\\appium'
+     }
 
     stages {
         stage('Checkout Code') {
             steps {
-                 git url: 'https://github.com/<felhasznalonev>/PracticeTestAutomation.git'
-                    branch: 'main'
+                 checkout scm
+            }
+        }
+
+        stage('Device settings') {
+            steps {
+                script {
+                    def devices = [
+                        pixel9Pro     : [avd: 'Pixel_9_Pro',       port: '5554'],
+                        pixel10ProFold: [avd: 'Pixel_10_Pro_Fold', port: '5556']
+                    ]
+                    env.AVD    = devices[params.DEVICE].avd
+                    env.SERIAL = "emulator-${devices[params.DEVICE].port}"
+                    env.PORT   = devices[params.DEVICE].port
+                }
             }
         }
 
@@ -51,14 +68,15 @@ pipeline {
         stage('Start emulator') {
             steps {
                 powershell '''
-                    Start-Process emulator -ArgumentList "-avd","Pixel_9_Pro","-no-snapshot-save","-no-boot-anim"
-                    adb wait-for-device
-                    $deadline = (Get-Date).AddMinutes(4)
+                    Start-Process $env:EMULATOR -ArgumentList "-avd",$env:AVD,"-port",$env:PORT,"-no-audio","-no-boot-anim"
+                    & $env:ADB -s $env:SERIAL wait-for-device
+                    $deadline = (Get-Date).AddMinutes(5)
                     do {
                         Start-Sleep -Seconds 5
-                        $booted = (adb shell getprop sys.boot_completed 2>$null)
+                        $booted = (& $env:ADB -s $env:SERIAL shell getprop sys.boot_completed 2>$null)
                     } until ($booted -match "1" -or (Get-Date) -gt $deadline)
                     if ($booted -notmatch "1") { throw "Emulator did not boot in time" }
+                    Start-Sleep -Seconds 30   # package manager bemelegedése (a régi jobod is vár)
                 '''
             }
         }
@@ -86,40 +104,41 @@ pipeline {
 
     post {
         always {
-            // 1. Teszteredmény-grafikon a Jenkinsben
-            junit allowEmptyResults: true, testResults: 'appium/target/surefire-reports/*.xml'
+            script {
+                def r = junit allowEmptyResults: true, testResults: 'appium/target/failsafe-reports/*.xml, appium/target/surefire-reports/*.xml'
+                env.T_TOTAL = "${r.totalCount}"; env.T_PASS = "${r.passCount}"
+                env.T_FAIL  = "${r.failCount}";  env.T_SKIP = "${r.skipCount}"
+            }
 
-            // 2. Fájlok megőrzése a buildhez (Jenkinsen belül, letölthető)
-            archiveArtifacts allowEmptyArchive: true,
-                artifacts: 'appium/target/cucumber-report.html, appium/target/screenshots/**, appium/target/appium-server.log'
 
-            // 3. HTML riport link a build oldalán
-            publishHTML(target: [
-                reportDir: 'appium/target', reportFiles: 'cucumber-report.html',
-                reportName: 'Cucumber report', keepAll: true,
-                alwaysLinkToLastBuild: true, allowMissing: true
-            ])
+    archiveArtifacts allowEmptyArchive: true,
+        artifacts: 'appium/target/reports/**, appium/target/screenshots/**, appium/target/appium-server.log'
 
-            // 4. Másolat egy saját mappába a gépen: C:\JenkinsReports\appium\<build szám>
-            powershell '''
-                $dest = Join-Path $env:REPORT_ROOT $env:BUILD_NUMBER
-                New-Item -ItemType Directory -Force -Path $dest | Out-Null
-                foreach ($p in "appium\\target\\cucumber-report.html", "appium\\target\\screenshots", "appium\\target\\surefire-reports") {
-                    if (Test-Path $p) { Copy-Item $p -Destination $dest -Recurse -Force }
-                }
-                Write-Host "Report copied to $dest"
-            '''
+        powershell '''
+            $dest = Join-Path $env:REPORT_ROOT $env:BUILD_NUMBER
+            New-Item -ItemType Directory -Force -Path $dest | Out-Null
+            foreach ($p in "appium\\target\\reports", "appium\\target\\screenshots", "appium\\target\\failsafe-reports") {
+                if (Test-Path $p) { Copy-Item $p -Destination $dest -Recurse -Force }
+            }
+            & $env:ADB -s $env:SERIAL emu kill 2>$null
+            exit 0
+        '''
 
-            // 5. Takarítás
-            powershell 'adb emu kill; exit 0'
-        }
-        success {
-            echo "✅ Tests passed – build #${env.BUILD_NUMBER}"
-            // slackSend(channel: '#qa-notifications', message: "✅ Tests passed – build #${env.BUILD_NUMBER}")
-        }
-        failure {
-            echo "❌ Build #${env.BUILD_NUMBER} failed – ${env.BUILD_URL}"
-            // slackSend(channel: '#qa-notifications', message: "❌ Build #${env.BUILD_NUMBER} failed: ${env.BUILD_URL}")
-        }
+        emailext(
+            subject: "${currentBuild.currentResult == 'SUCCESS' ? '✅' : '❌'} Appium tests #${env.BUILD_NUMBER}: ${currentBuild.currentResult}",
+            to: '$DEFAULT_RECIPIENTS',
+            mimeType: 'text/html',
+            body: """
+                <h2>Appium tests – build #${env.BUILD_NUMBER} (${params.DEVICE})</h2>
+                <p><b>Result:</b> ${currentBuild.currentResult}</p>
+                <p>Total: ${env.T_TOTAL} | Passed: ${env.T_PASS} | Failed: ${env.T_FAIL} | Skipped: ${env.T_SKIP}</p>
+                <p>Extent report download:
+                   <a href="${env.BUILD_URL}artifact/appium/target/reports/">${env.BUILD_URL}artifact/appium/target/reports/</a></p>
+                <p>Local copy: <code>${env.REPORT_ROOT}\\${env.BUILD_NUMBER}</code></p>
+                <p>Console: <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></p>
+            """,
+            attachLog: currentBuild.currentResult != 'SUCCESS'
+        )
+    }
     }
 }
