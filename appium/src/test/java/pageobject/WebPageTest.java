@@ -46,7 +46,9 @@ public class WebPageTest {
     @DisplayName("Megkeresni a Live Mode részt és tovább navigálni")
     void userCanOpenLiveMode() {
         WebPage webPage = navBar.openWebview();
-        assertThat(webPage.isDisplayed()).isTrue();
+        assertThat(webPage.isLoaded())
+                .as("A Web fül főcíme nem jelent meg")
+                .isTrue();
 
         webPage.findAndOpenLiveMode();
 

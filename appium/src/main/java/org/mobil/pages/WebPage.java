@@ -9,28 +9,33 @@ import org.openqa.selenium.WebElement;
 import java.time.Duration;
 
 public class WebPage extends BasePage {
-    @AndroidFindBy(className = "android.view.View")
-    @iOSXCUITFindBy(className = "android.view.View")
-    private WebElement screen;
 
-    // Csak a cím eleje: a teljes content-desc szövege eszközönként (pl. a kihajtott Fold széles
-    // nézetében) eltérhet, a "Live mode" rész viszont mindenhol benne van.
-    private static final String LIVE_MODE_TEXT = "Live mode";
+    /** A Web fül főcíme - ha ez látszik, a WebView betöltötte az oldalt. */
+    private static final String HEADLINE = "One framework to test every platform your users are on";
+    /** Az Inspector szerint: android.widget.TextView, text="Live mode". */
+    private static final String LIVE_MODE = "Live mode";
+
+    @AndroidFindBy(className = "android.webkit.WebView")
+    @iOSXCUITFindBy(className = "XCUIElementTypeWebView")
+    private WebElement screen;
 
     public boolean isDisplayed() {
         return isDisplayed(screen);
     }
 
-
-    public void findAndOpenLiveMode(){
-        scrollToDescriptionContains(LIVE_MODE_TEXT).click();
+    /** Az oldal akkor van betöltve, ha a főcím megjelent. */
+    public boolean isLoaded() {
+        return isTextVisibleWithin(HEADLINE, Duration.ofSeconds(20));
     }
 
+    public void findAndOpenLiveMode() {
+        scrollToText(LIVE_MODE).click();
+    }
+
+    /** Továbbnavigáltunk, ha a "Live mode" cím már nem látszik. */
     public boolean navigatedAway() {
-        return isGoneWithin(AppiumBy.androidUIAutomator(
-                "new UiSelector().descriptionContains(\"" + LIVE_MODE_TEXT + "\")"), Duration.ofSeconds(10));
+        return isGoneWithin(
+                AppiumBy.androidUIAutomator("new UiSelector().text(\"" + LIVE_MODE + "\")"),
+                Duration.ofSeconds(10));
     }
-
-
-
 }
