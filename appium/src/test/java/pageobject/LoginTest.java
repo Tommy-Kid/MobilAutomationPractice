@@ -1,6 +1,8 @@
 package pageobject;
 
+import extensions.ExtentExtension;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -15,6 +17,7 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("Login képernyő (classic Page Object)")
+@ExtendWith(ExtentExtension.class)
 class LoginTest {
 
     private NavBarPage navBar;

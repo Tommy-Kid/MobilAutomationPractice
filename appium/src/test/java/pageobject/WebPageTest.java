@@ -1,6 +1,8 @@
 package pageobject;
 
+import extensions.ExtentExtension;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mobil.config.DriverManager;
 import org.mobil.factory.DriverFactory;
 import org.mobil.pages.LoginPage;
@@ -10,6 +12,7 @@ import org.mobil.utils.AppiumServerManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ExtendWith(ExtentExtension.class)
 public class WebPageTest {
 
     private NavBarPage navBar;
