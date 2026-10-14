@@ -22,6 +22,11 @@ public class WebPage extends BasePage {
         return isDisplayed(screen);
     }
 
+    /** A Web fül megnyílt, ha a WebView megjelent (csak ezen a fülön van WebView). */
+    public boolean isOpened() {
+        return isVisibleWithin(AppiumBy.className("android.webkit.WebView"), Duration.ofSeconds(15));
+    }
+
     /**
      * Betöltött, ha a főcím megtalálható. Elemre görgetve keressük, mert az app megőrzi a WebView
      * görgetési helyzetét (a Jenkinsben a láblécnél nyílt meg), a scrollIntoView pedig előbb az elejére

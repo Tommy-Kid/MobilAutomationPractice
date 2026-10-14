@@ -82,6 +82,16 @@ public abstract class BasePage {
                         ".scrollIntoView(" + uiSelector + ")"));
     }
 
+    /** Megvárja, hogy a lokátorral megadott elem látható legyen; true, ha a határidőn belül megjelent. */
+    protected boolean isVisibleWithin(By locator, Duration timeout) {
+        try {
+            new WebDriverWait(getDriver(), timeout).until(ExpectedConditions.visibilityOfElementLocated(locator));
+            return true;
+        } catch (TimeoutException e) {
+            return false;
+        }
+    }
+
     /** Megvárja, hogy egy adott szövegű elem megjelenjen (pl. egy oldal címe = az oldal betöltött). */
     protected boolean isTextVisibleWithin(String text, Duration timeout) {
         By locator = AppiumBy.androidUIAutomator("new UiSelector().text(\"" + text + "\")");

@@ -43,9 +43,31 @@ public class NavBarPage extends BasePage {
         click(homeTab);
     }
 
+    /**
+     * Rákattint a Web fülre, és meg is győződik róla, hogy átváltott: ha 15 mp alatt nem jelenik meg
+     * a WebView, itt azonnal, érthető üzenettel bukik el - nem később, egy félrevezető hibával.
+     */
     public WebPage openWebview() {
         click(webviewTab);
-        return new WebPage();
+        WebPage webPage = new WebPage();
+        if (!webPage.isOpened()) {
+            throw new IllegalStateException("A Web fülre kattintás után nem jelent meg a WebView");
+        }
+        log.info("Web fül megnyitva (selected={})", isSelected(webviewTab));
+        return webPage;
+    }
+
+    /** A fül ki van-e jelölve (Android "selected" attribútum). */
+    public boolean isWebviewTabSelected() {
+        return isSelected(webviewTab);
+    }
+
+    private boolean isSelected(WebElement tab) {
+        try {
+            return "true".equals(tab.getAttribute("selected"));
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public LoginPage openLogin() {
