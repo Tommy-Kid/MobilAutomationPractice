@@ -10,7 +10,8 @@ import java.time.Duration;
 
 public class WebPage extends BasePage {
 
-    private static final String HEADLINE = "One framework to test every platform your users are on";
+    // A főcím: "One framework to test every platform your users are on"
+    private static final String HEADLINE_START = "One framework to test";
     private static final String LIVE_MODE = "Live mode";
 
     @AndroidFindBy(className = "android.webkit.WebView")
@@ -21,8 +22,21 @@ public class WebPage extends BasePage {
         return isDisplayed(screen);
     }
 
+    /**
+     * Betöltött, ha a főcím megtalálható. Elemre görgetve keressük, mert az app megőrzi a WebView
+     * görgetési helyzetét (a Jenkinsben a láblécnél nyílt meg), a scrollIntoView pedig előbb az elejére
+     * görget. textContains: ha a cím több részre van tördelve, akkor is egyezzen.
+     */
     public boolean isLoaded() {
-        return isTextVisibleWithin(HEADLINE, Duration.ofSeconds(20));
+        if (!isDisplayed(screen)) {
+            return false;
+        }
+        try {
+            scrollIntoView("new UiSelector().textContains(\"" + HEADLINE_START + "\")");
+            return true;
+        } catch (org.openqa.selenium.NoSuchElementException e) {
+            return false;
+        }
     }
 
     public void findAndOpenLiveMode() {
