@@ -69,20 +69,56 @@ pipeline {
             options { timeout(time: 8, unit: 'MINUTES') }
             steps {
                 powershell '''
-                    & $env:ADB -s $env:SERIAL emu kill 2>$null
+                    $ErrorActionPreference = "Continue"
+                    $tmp = Join-Path $env:WORKSPACE "adb_out.txt"
+
+                    # Minden adb hívásnak van időkorlátja, így egy beragadt adb nem tudja megfogni a buildet
+                    function Adb([string[]]$a, [int]$sec = 15) {
+                        $p = Start-Process -FilePath $env:ADB -ArgumentList $a -NoNewWindow -PassThru `
+                             -RedirectStandardOutput $tmp -RedirectStandardError "$tmp.err"
+                        if (-not $p.WaitForExit($sec * 1000)) {
+                            try { $p.Kill() } catch {}
+                            Write-Host "  adb $($a -join ' ') -> TIMEOUT ($sec s)"
+                            return ""
+                        }
+                        return ((Get-Content $tmp -Raw -ErrorAction SilentlyContinue) + "").Trim()
+                    }
+
+                    Write-Host "== adb szerver ujrainditasa"
+                    Adb @("kill-server") 15 | Out-Null
+                    Adb @("start-server") 30 | Out-Null
+                    Write-Host (Adb @("devices"))
+
+                    Write-Host "== regi emulator leallitasa ($env:SERIAL)"
+                    Adb @("-s", $env:SERIAL, "emu", "kill") 15 | Out-Null
                     Start-Sleep -Seconds 3
-                    $p = Start-Process $env:EMULATOR -PassThru `
-                         -ArgumentList "-avd",$env:AVD,"-port",$env:PORT,"-no-audio","-no-boot-anim","-no-snapshot-save" `
-                         -RedirectStandardOutput "emulator.log" -RedirectStandardError "emulator.err.log"
-                    $deadline = (Get-Date).AddMinutes(6)
-                    $booted = ""
+
+                    Write-Host "== emulator inditasa: $env:AVD port $env:PORT"
+                    $emu = Start-Process $env:EMULATOR -PassThru `
+                           -ArgumentList "-avd",$env:AVD,"-port",$env:PORT,"-no-audio","-no-boot-anim","-no-snapshot-save" `
+                           -RedirectStandardOutput "emulator.log" -RedirectStandardError "emulator.err.log"
+
+                    $deadline = (Get-Date).AddMinutes(5)
+                    $i = 0
                     do {
                         Start-Sleep -Seconds 5
-                        if ($p.HasExited) { Get-Content emulator.log, emulator.err.log -ErrorAction SilentlyContinue; throw "Emulator exited (code $($p.ExitCode))" }
-                        $booted = cmd /c "`"$env:ADB`" -s $env:SERIAL shell getprop sys.boot_completed < NUL 2>NUL"
-                    } until ($booted -match "1" -or (Get-Date) -gt $deadline)
-                    if ($booted -notmatch "1") { throw "Emulator did not boot in time" }
-                    Start-Sleep -Seconds 20
+                        $i++
+                        if ($emu.HasExited) {
+                            Get-Content emulator.log -Tail 30 -ErrorAction SilentlyContinue
+                            throw "Az emulator kilepett (exit code $($emu.ExitCode))"
+                        }
+                        $state  = Adb @("-s", $env:SERIAL, "get-state") 10
+                        $booted = Adb @("-s", $env:SERIAL, "shell", "getprop", "sys.boot_completed") 10
+                        Write-Host "  [$i] state=$state boot_completed=$booted"
+                    } until ($booted -eq "1" -or (Get-Date) -gt $deadline)
+
+                    if ($booted -ne "1") {
+                        Write-Host (Adb @("devices"))
+                        Get-Content emulator.log -Tail 30 -ErrorAction SilentlyContinue
+                        throw "Az emulator nem bootolt be 5 perc alatt"
+                    }
+                    Write-Host "== emulator kesz"
+                    Start-Sleep -Seconds 15
                 '''
             }
         }
