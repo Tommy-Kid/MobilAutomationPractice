@@ -68,72 +68,18 @@ pipeline {
         stage('Start emulator') {
             options { timeout(time: 8, unit: 'MINUTES') }
             steps {
+                // Ez a valtozat futott le a #6-os buildben 1 perc alatt - szandekosan egyszeru
                 powershell '''
-                    $ErrorActionPreference = "Continue"
-                    $tmp = Join-Path $env:WORKSPACE "adb_out.txt"
-
-                    # Minden adb hívásnak van időkorlátja, így egy beragadt adb nem tudja megfogni a buildet
-                    function Adb([string[]]$a, [int]$sec = 15) {
-                        $p = Start-Process -FilePath $env:ADB -ArgumentList $a -NoNewWindow -PassThru `
-                             -RedirectStandardOutput $tmp -RedirectStandardError "$tmp.err"
-                        if (-not $p.WaitForExit($sec * 1000)) {
-                            try { $p.Kill() } catch {}
-                            Write-Host "  adb $($a -join ' ') -> TIMEOUT ($sec s)"
-                            return ""
-                        }
-                        return ((Get-Content $tmp -Raw -ErrorAction SilentlyContinue) + "").Trim()
-                    }
-
-                    Write-Host "== adb szerver ujrainditasa"
-                    Adb @("kill-server") 15 | Out-Null
-                    # ShellExecute-tal inditjuk (nincs -NoNewWindow/-Redirect), igy az adb szerver
-                    # NEM orokli a Jenkins kimeneti csatornajat, es a lepes nem var ra a vegtelensegig
-                    # NINCS -Wait: a Start-Process -Wait a gyerekfolyamatokat is megvarja,
-                    # az adb szerver pedig orokke fut -> ott ragadt a #9-es build
-                    Start-Process -FilePath $env:ADB -ArgumentList "start-server" -WindowStyle Hidden
-                    $srv = $false
-                    foreach ($k in 1..10) {
-                        Start-Sleep -Seconds 1
-                        if (Get-Process adb -ErrorAction SilentlyContinue) { $srv = $true; break }
-                    }
-                    Start-Sleep -Seconds 2
-                    Write-Host "  adb szerver fut: $srv"
-                    Write-Host (Adb @("devices"))
-
-                    Write-Host "== regi emulator leallitasa ($env:SERIAL)"
-                    Adb @("-s", $env:SERIAL, "emu", "kill") 15 | Out-Null
-                    Start-Sleep -Seconds 3
-
-                    Write-Host "== emulator inditasa: $env:AVD port $env:PORT"
-                    # Szinten ShellExecute: a cmd.exe kulon folyamatkent fut, a logot o irja fajlba.
-                    # Ha -RedirectStandardOutput-tal inditanank, az emulator orokolne a Jenkins pipe-ot,
-                    # es a stage addig "futna", amig az emulator el.
-                    $log = Join-Path $env:WORKSPACE "emulator.log"
-                    $cmdLine = "/c $env:EMULATOR -avd $env:AVD -port $env:PORT -no-audio -no-boot-anim -no-snapshot-save > $log 2>&1"
-                    $emu = Start-Process -FilePath "cmd.exe" -ArgumentList $cmdLine -WindowStyle Minimized -PassThru
-
+                    Start-Process $env:EMULATOR -ArgumentList "-avd",$env:AVD,"-port",$env:PORT,"-no-audio","-no-boot-anim"
+                    & $env:ADB -s $env:SERIAL wait-for-device
                     $deadline = (Get-Date).AddMinutes(5)
-                    $i = 0
                     do {
                         Start-Sleep -Seconds 5
-                        $i++
-                        if ($emu.HasExited) {
-                            Get-Content emulator.log -Tail 30 -ErrorAction SilentlyContinue
-                            throw "Az emulator kilepett (exit code $($emu.ExitCode))"
-                        }
-                        $state  = Adb @("-s", $env:SERIAL, "get-state") 10
-                        $booted = Adb @("-s", $env:SERIAL, "shell", "getprop", "sys.boot_completed") 10
-                        Write-Host "  [$i] state=$state boot_completed=$booted"
-                    } until ($booted -eq "1" -or (Get-Date) -gt $deadline)
-
-                    if ($booted -ne "1") {
-                        Write-Host (Adb @("devices"))
-                        Get-Content emulator.log -Tail 30 -ErrorAction SilentlyContinue
-                        throw "Az emulator nem bootolt be 5 perc alatt"
-                    }
-                    Write-Host "== emulator kesz, stage vege"
-                    Start-Sleep -Seconds 10
-                    exit 0
+                        $booted = (& $env:ADB -s $env:SERIAL shell getprop sys.boot_completed 2>$null)
+                        Write-Host "boot_completed=$booted"
+                    } until ($booted -match "1" -or (Get-Date) -gt $deadline)
+                    if ($booted -notmatch "1") { throw "Emulator did not boot in time" }
+                    Start-Sleep -Seconds 15
                 '''
             }
         }
