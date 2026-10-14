@@ -53,7 +53,7 @@ pipeline {
                     New-Item -ItemType Directory -Force -Path $dir | Out-Null
                     $apk = Join-Path $dir "android.wdio.native.app.v2.2.0.apk"
                     if (-not (Test-Path $apk)) {
-                        Invoke-WebRequest -Uri "<az APK közvetlen letöltési linkje a GitHub releases oldalról>" -OutFile $apk
+                        Invoke-WebRequest -Uri $env:APK_URL -OutFile $apk
                     }
                 '''
             }
