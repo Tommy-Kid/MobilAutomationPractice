@@ -74,7 +74,7 @@ public abstract class BasePage {
      */
     protected WebElement scrollToText(String text) {
         return getDriver().findElement(AppiumBy.androidUIAutomator(
-                "new UiScrollable(new UiSelector().scrollable(true)).setMaxSearchSwipes(30)" +
+                "new UiScrollable(new UiSelector().scrollable(true))" +
                         ".scrollIntoView(new UiSelector().text(\"" + text + "\"))"));
     }
 
