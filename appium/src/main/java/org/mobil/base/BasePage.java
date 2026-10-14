@@ -68,9 +68,18 @@ public abstract class BasePage {
 
 
     protected WebElement scrollToText(String text) {
+        return scrollIntoView("new UiSelector().text(\"" + text + "\")");
+    }
+
+    /**
+     * Általános elemre görgetés tetszőleges UiSelectorral. A UiScrollable.scrollIntoView először az
+     * elejére görget (scrollToBeginning), utána lefelé keres - így akkor is megtalálja az elemet,
+     * ha az oldal egy korábbi futásból alul maradt.
+     */
+    protected WebElement scrollIntoView(String uiSelector) {
         return getDriver().findElement(AppiumBy.androidUIAutomator(
                 "new UiScrollable(new UiSelector().scrollable(true))" +
-                        ".scrollIntoView(new UiSelector().text(\"" + text + "\"))"));
+                        ".scrollIntoView(" + uiSelector + ")"));
     }
 
     /** Megvárja, hogy egy adott szövegű elem megjelenjen (pl. egy oldal címe = az oldal betöltött). */
