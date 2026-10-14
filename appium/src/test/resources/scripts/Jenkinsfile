@@ -68,8 +68,16 @@ pipeline {
         stage('Start emulator') {
             options { timeout(time: 8, unit: 'MINUTES') }
             steps {
-                // Ez a valtozat futott le a #6-os buildben 1 perc alatt - szandekosan egyszeru
                 powershell '''
+                    # FONTOS: ha az adb szervert ez a lepes inditja el, az orokli a Jenkins kimeneti csatornajat,
+                    # es a stage soha nem er veget (emiatt akadt el a #5, #8, #9, #10).
+                    # Ezert a WMI-vel inditjuk, igy teljesen fuggetlen a Jenkins lepestol.
+                    if (-not (Get-Process adb -ErrorAction SilentlyContinue)) {
+                        Write-Host "adb szerver inditasa WMI-vel"
+                        Invoke-CimMethod -ClassName Win32_Process -MethodName Create `
+                            -Arguments @{ CommandLine = "`"$env:ADB`" start-server" } | Out-Null
+                        Start-Sleep -Seconds 4
+                    }
                     Start-Process $env:EMULATOR -ArgumentList "-avd",$env:AVD,"-port",$env:PORT,"-no-audio","-no-boot-anim"
                     & $env:ADB -s $env:SERIAL wait-for-device
                     $deadline = (Get-Date).AddMinutes(5)
