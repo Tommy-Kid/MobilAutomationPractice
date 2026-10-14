@@ -86,7 +86,9 @@ pipeline {
 
                     Write-Host "== adb szerver ujrainditasa"
                     Adb @("kill-server") 15 | Out-Null
-                    Adb @("start-server") 30 | Out-Null
+                    # ShellExecute-tal inditjuk (nincs -NoNewWindow/-Redirect), igy az adb szerver
+                    # NEM orokli a Jenkins kimeneti csatornajat, es a lepes nem var ra a vegtelensegig
+                    Start-Process -FilePath $env:ADB -ArgumentList "start-server" -WindowStyle Hidden -Wait
                     Write-Host (Adb @("devices"))
 
                     Write-Host "== regi emulator leallitasa ($env:SERIAL)"
@@ -94,9 +96,12 @@ pipeline {
                     Start-Sleep -Seconds 3
 
                     Write-Host "== emulator inditasa: $env:AVD port $env:PORT"
-                    $emu = Start-Process $env:EMULATOR -PassThru `
-                           -ArgumentList "-avd",$env:AVD,"-port",$env:PORT,"-no-audio","-no-boot-anim","-no-snapshot-save" `
-                           -RedirectStandardOutput "emulator.log" -RedirectStandardError "emulator.err.log"
+                    # Szinten ShellExecute: a cmd.exe kulon folyamatkent fut, a logot o irja fajlba.
+                    # Ha -RedirectStandardOutput-tal inditanank, az emulator orokolne a Jenkins pipe-ot,
+                    # es a stage addig "futna", amig az emulator el.
+                    $log = Join-Path $env:WORKSPACE "emulator.log"
+                    $cmdLine = "/c $env:EMULATOR -avd $env:AVD -port $env:PORT -no-audio -no-boot-anim -no-snapshot-save > $log 2>&1"
+                    $emu = Start-Process -FilePath "cmd.exe" -ArgumentList $cmdLine -WindowStyle Minimized -PassThru
 
                     $deadline = (Get-Date).AddMinutes(5)
                     $i = 0
@@ -118,7 +123,7 @@ pipeline {
                         throw "Az emulator nem bootolt be 5 perc alatt"
                     }
                     Write-Host "== emulator kesz"
-                    Start-Sleep -Seconds 15
+                    Start-Sleep -Seconds 10
                 '''
             }
         }
