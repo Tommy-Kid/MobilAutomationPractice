@@ -85,6 +85,7 @@ public class ExtentExtension implements BeforeEachCallback, TestExecutionExcepti
         try {
             ctx.getStore(NS).put(SCREENSHOT, ScreenshotUtil.captureScreenshotAsBase64());
             ScreenshotUtil.captureScreenshot(ctx.getRequiredTestMethod().getName()); // fájlba is, target/screenshots
+            savePageSource(ctx.getRequiredTestMethod().getName());
         } catch (Exception ignored) {
             // screenshot hiba ne takarja el a teszt valódi hibáját
         }
@@ -99,5 +100,18 @@ public class ExtentExtension implements BeforeEachCallback, TestExecutionExcepti
     private void finish() {
         ExtentManager.endTest();
         ExtentManager.flush();
+    }
+
+    /** Hibánál a teljes elemfa (page source) is mentődik: target/screenshots/<teszt>_<idő>.xml - ebből látszik, milyen lokátor kell. */
+    private void savePageSource(String testName) {
+        try {
+            String ts = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSS"));
+            java.nio.file.Path dir = java.nio.file.Path.of("target", "screenshots");
+            java.nio.file.Files.createDirectories(dir);
+            java.nio.file.Files.writeString(dir.resolve(testName + "_" + ts + ".xml"),
+                    DriverManager.getDriver().getPageSource(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Exception ignored) {
+            // page source mentése sem takarhatja el a valódi hibát
+        }
     }
 }
