@@ -61,7 +61,7 @@ pipeline {
 
          stage('Compile') {
             steps {
-                bat 'mvn -B -pl appium -am -DskipTests clean compile'
+                bat '"%MVN%" -B -pl appium -am -DskipTests clean compile'
             }
         }
 
@@ -83,23 +83,17 @@ pipeline {
 
         stage('Mobile tests') {
             steps {
-                bat "mvn -B -pl appium -am test -Ddevice=${params.DEVICE}"
+                bat '"%MVN%" -B -pl appium -am test -Ddevice=${params.DEVICE}'
             }
         }
 
         stage('Security scan') {
             when { expression { params.SECURITY_SCAN } }
             steps {
-                bat 'mvn -B -pl appium org.owasp:dependency-check-maven:check'
+                bat '"%MVN%" -B -pl appium org.owasp:dependency-check-maven:check'
             }
         }
 
-        stage('Send Notification') {
-            steps {
-                slackSend(channel: env.SLACK_CHANNEL,
-                          message: "✅ Tests passed for build ${env.BUILD_NUMBER}")
-            }
-        }
     }
 
     post {
