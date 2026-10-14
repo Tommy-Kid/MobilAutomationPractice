@@ -66,12 +66,7 @@ public abstract class BasePage {
                         ".scrollIntoView(new UiSelector().description(\"" + id + "\"))"));
     }
 
-    /** Mint a scrollToAccessibilityId, de elég, ha a content-desc TARTALMAZZA a szöveget (eszközfüggetlenebb). */
-    /**
-     * Elemre görget, nem pixelre: a UiScrollable addig görget, amíg meg nem találja azt az elemet,
-     * amelynek a kiírt szövege PONTOSAN ez (UiSelector().text). WebView-ban a weboldal szövegei
-     * android.widget.TextView-ként jelennek meg, ezért itt a text a helyes attribútum, nem a content-desc.
-     */
+
     protected WebElement scrollToText(String text) {
         return getDriver().findElement(AppiumBy.androidUIAutomator(
                 "new UiScrollable(new UiSelector().scrollable(true))" +

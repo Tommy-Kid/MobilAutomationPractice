@@ -10,9 +10,7 @@ import java.time.Duration;
 
 public class WebPage extends BasePage {
 
-    /** A Web fül főcíme - ha ez látszik, a WebView betöltötte az oldalt. */
     private static final String HEADLINE = "One framework to test every platform your users are on";
-    /** Az Inspector szerint: android.widget.TextView, text="Live mode". */
     private static final String LIVE_MODE = "Live mode";
 
     @AndroidFindBy(className = "android.webkit.WebView")
@@ -23,7 +21,6 @@ public class WebPage extends BasePage {
         return isDisplayed(screen);
     }
 
-    /** Az oldal akkor van betöltve, ha a főcím megjelent. */
     public boolean isLoaded() {
         return isTextVisibleWithin(HEADLINE, Duration.ofSeconds(20));
     }
@@ -32,7 +29,6 @@ public class WebPage extends BasePage {
         scrollToText(LIVE_MODE).click();
     }
 
-    /** Továbbnavigáltunk, ha a "Live mode" cím már nem látszik. */
     public boolean navigatedAway() {
         return isGoneWithin(
                 AppiumBy.androidUIAutomator("new UiSelector().text(\"" + LIVE_MODE + "\")"),
