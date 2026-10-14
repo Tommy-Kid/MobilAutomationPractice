@@ -94,7 +94,7 @@ pipeline {
 
         stage('Mobile tests') {
             steps {
-                bat '"%MVN%" -B -f appium\\pom.xml verify -Ddevice=%DEVICE% -Dmaven.test.failure.ignore=true'
+                bat '"%MVN%" -B -f appium\\pom.xml verify -Ddevice=%DEVICE% -Dmaven.test.failure.ignore=true -Djunit.jupiter.execution.parallel.enabled=false'
             }
         }
     }
@@ -133,6 +133,7 @@ pipeline {
                 <p>Local copy: <code>${env.REPORT_ROOT}\\${env.BUILD_NUMBER}</code></p>
                 <p>Console: <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></p>
             """,
+            attachmentsPattern: 'appium/target/reports/ExtentReport.html',
             attachLog: currentBuild.currentResult != 'SUCCESS'
         )
     }

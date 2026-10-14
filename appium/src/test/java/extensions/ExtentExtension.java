@@ -3,6 +3,7 @@ package extensions;
 import com.aventstack.extentreports.ExtentTest;
 import com.aventstack.extentreports.MediaEntityBuilder;
 import org.junit.jupiter.api.extension.*;
+import org.mobil.config.DriverManager;
 import org.mobil.report.ExtentManager;
 import org.mobil.utils.ScreenshotUtil;
 
@@ -71,9 +72,22 @@ public class ExtentExtension implements BeforeEachCallback, TestExecutionExcepti
         finish();
     }
 
+    /**
+     * Soha nem dobhat kivételt: ha pl. a driver létrehozása bukott el (nincs driver),
+     * akkor egyszerűen nincs kép - az EREDETI hiba marad a riportban, nem egy screenshot-hiba.
+     */
     private void takeScreenshot(ExtensionContext ctx) {
-        ctx.getStore(NS).put(SCREENSHOT, ScreenshotUtil.captureScreenshotAsBase64());
-        ScreenshotUtil.captureScreenshot(ctx.getRequiredTestMethod().getName()); // fájlba is, target/screenshots
+        try {
+            DriverManager.getDriver();   // van egyáltalán driver?
+        } catch (Exception noDriver) {
+            return;
+        }
+        try {
+            ctx.getStore(NS).put(SCREENSHOT, ScreenshotUtil.captureScreenshotAsBase64());
+            ScreenshotUtil.captureScreenshot(ctx.getRequiredTestMethod().getName()); // fájlba is, target/screenshots
+        } catch (Exception ignored) {
+            // screenshot hiba ne takarja el a teszt valódi hibáját
+        }
     }
 
     /** Ha a beforeEach nem futott le (ritka), akkor is legyen bejegyzés. */
