@@ -13,9 +13,9 @@ public class WebPage extends BasePage {
     @iOSXCUITFindBy(className = "android.view.View")
     private WebElement screen;
 
-    private static final String LIVE_MODE_ID =
-            "Live mode An interactive dashboard that opens while your tests run.";
-;
+    // Csak a cím eleje: a teljes content-desc szövege eszközönként (pl. a kihajtott Fold széles
+    // nézetében) eltérhet, a "Live mode" rész viszont mindenhol benne van.
+    private static final String LIVE_MODE_TEXT = "Live mode";
 
     public boolean isDisplayed() {
         return isDisplayed(screen);
@@ -23,11 +23,12 @@ public class WebPage extends BasePage {
 
 
     public void findAndOpenLiveMode(){
-        scrollToAccessibilityId(LIVE_MODE_ID).click();
+        scrollToDescriptionContains(LIVE_MODE_TEXT).click();
     }
 
     public boolean navigatedAway() {
-        return isGoneWithin(AppiumBy.accessibilityId(LIVE_MODE_ID), Duration.ofSeconds(10));
+        return isGoneWithin(AppiumBy.androidUIAutomator(
+                "new UiSelector().descriptionContains(\"" + LIVE_MODE_TEXT + "\")"), Duration.ofSeconds(10));
     }
 
 

@@ -66,6 +66,13 @@ public abstract class BasePage {
                         ".scrollIntoView(new UiSelector().description(\"" + id + "\"))"));
     }
 
+    /** Mint a scrollToAccessibilityId, de elég, ha a content-desc TARTALMAZZA a szöveget (eszközfüggetlenebb). */
+    protected WebElement scrollToDescriptionContains(String text) {
+        return getDriver().findElement(AppiumBy.androidUIAutomator(
+                "new UiScrollable(new UiSelector().scrollable(true))" +
+                        ".scrollIntoView(new UiSelector().descriptionContains(\"" + text + "\"))"));
+    }
+
     protected boolean isGoneWithin(By locator, Duration timeout) {
         try {
             return new WebDriverWait(getDriver(), timeout)
