@@ -88,7 +88,16 @@ pipeline {
                     Adb @("kill-server") 15 | Out-Null
                     # ShellExecute-tal inditjuk (nincs -NoNewWindow/-Redirect), igy az adb szerver
                     # NEM orokli a Jenkins kimeneti csatornajat, es a lepes nem var ra a vegtelensegig
-                    Start-Process -FilePath $env:ADB -ArgumentList "start-server" -WindowStyle Hidden -Wait
+                    # NINCS -Wait: a Start-Process -Wait a gyerekfolyamatokat is megvarja,
+                    # az adb szerver pedig orokke fut -> ott ragadt a #9-es build
+                    Start-Process -FilePath $env:ADB -ArgumentList "start-server" -WindowStyle Hidden
+                    $srv = $false
+                    foreach ($k in 1..10) {
+                        Start-Sleep -Seconds 1
+                        if (Get-Process adb -ErrorAction SilentlyContinue) { $srv = $true; break }
+                    }
+                    Start-Sleep -Seconds 2
+                    Write-Host "  adb szerver fut: $srv"
                     Write-Host (Adb @("devices"))
 
                     Write-Host "== regi emulator leallitasa ($env:SERIAL)"
@@ -122,8 +131,9 @@ pipeline {
                         Get-Content emulator.log -Tail 30 -ErrorAction SilentlyContinue
                         throw "Az emulator nem bootolt be 5 perc alatt"
                     }
-                    Write-Host "== emulator kesz"
+                    Write-Host "== emulator kesz, stage vege"
                     Start-Sleep -Seconds 10
+                    exit 0
                 '''
             }
         }
