@@ -9,19 +9,19 @@
     <version>1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <modules>
-        <module>playwright</module>
-        <module>appium</module>
-    </modules>
+    <!--  <module>playwright</module>-->
+          <module>appium</module>
+      </modules>
 
-    <properties>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <extentreports.version>5.1.1</extentreports.version>
-    </properties>
+      <properties>
+          <maven.compiler.source>21</maven.compiler.source>
+          <maven.compiler.target>21</maven.compiler.target>
+          <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+          <extentreports.version>5.1.1</extentreports.version>
+      </properties>
 
-    <dependencies>
-        <!-- JUnit 5 -->
+      <dependencies>
+          <!-- JUnit 5 -->
         <!-- Source: https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-api -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
