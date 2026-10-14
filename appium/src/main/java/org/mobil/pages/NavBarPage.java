@@ -43,8 +43,9 @@ public class NavBarPage extends BasePage {
         click(homeTab);
     }
 
-    public void openWebview() {
+    public WebPage openWebview() {
         click(webviewTab);
+        return new WebPage();
     }
 
     public LoginPage openLogin() {

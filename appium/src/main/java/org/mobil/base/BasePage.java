@@ -1,5 +1,6 @@
 package org.mobil.base;
 
+import io.appium.java_client.AppiumBy;
 import io.appium.java_client.AppiumDriver;
 import io.appium.java_client.pagefactory.AppiumFieldDecorator;
 import org.mobil.config.DriverManager;
@@ -8,8 +9,11 @@ import org.openqa.selenium.By;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.PageFactory;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
 
@@ -52,6 +56,21 @@ public abstract class BasePage {
         try {
             return element.isDisplayed();
         } catch (Exception e) {
+            return false;
+        }
+    }
+
+    protected WebElement scrollToAccessibilityId(String id) {
+        return getDriver().findElement(AppiumBy.androidUIAutomator(
+                "new UiScrollable(new UiSelector().scrollable(true))" +
+                        ".scrollIntoView(new UiSelector().description(\"" + id + "\"))"));
+    }
+
+    protected boolean isGoneWithin(By locator, Duration timeout) {
+        try {
+            return new WebDriverWait(getDriver(), timeout)
+                    .until(ExpectedConditions.invisibilityOfElementLocated(locator));
+        } catch (TimeoutException e) {
             return false;
         }
     }

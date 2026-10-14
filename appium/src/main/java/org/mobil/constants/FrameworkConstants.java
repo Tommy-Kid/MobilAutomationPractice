@@ -13,6 +13,7 @@ public class FrameworkConstants {
 
     public static final Path TARGET = Path.of("target");
     public static final Path SCREENSHOTS_DIR = TARGET.resolve("screenshots");
+    public static final Path REPORTS_DIR = TARGET.resolve("reports");
 
     public static final int EXPLICIT_WAIT = Config.CONFIG.explicitTimeoutSeconds();
     public static final int IMPLICIT_WAIT = 10;

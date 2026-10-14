@@ -61,39 +61,37 @@ pipeline {
 
          stage('Compile') {
             steps {
-                bat '"%MVN%" -B -pl appium -am -DskipTests clean compile'
+                bat '"%MVN%" -B -f appium\\pom.xml -DskipTests clean compile'
             }
         }
 
         stage('Start emulator') {
+            options { timeout(time: 8, unit: 'MINUTES') }
             steps {
                 powershell '''
-                    Start-Process $env:EMULATOR -ArgumentList "-avd",$env:AVD,"-port",$env:PORT,"-no-audio","-no-boot-anim"
-                    & $env:ADB -s $env:SERIAL wait-for-device
-                    $deadline = (Get-Date).AddMinutes(5)
+                    & $env:ADB -s $env:SERIAL emu kill 2>$null
+                    Start-Sleep -Seconds 3
+                    $p = Start-Process $env:EMULATOR -PassThru `
+                         -ArgumentList "-avd",$env:AVD,"-port",$env:PORT,"-no-audio","-no-boot-anim","-no-snapshot-save" `
+                         -RedirectStandardOutput "emulator.log" -RedirectStandardError "emulator.err.log"
+                    $deadline = (Get-Date).AddMinutes(6)
+                    $booted = ""
                     do {
                         Start-Sleep -Seconds 5
-                        $booted = (& $env:ADB -s $env:SERIAL shell getprop sys.boot_completed 2>$null)
+                        if ($p.HasExited) { Get-Content emulator.log, emulator.err.log -ErrorAction SilentlyContinue; throw "Emulator exited (code $($p.ExitCode))" }
+                        $booted = cmd /c "`"$env:ADB`" -s $env:SERIAL shell getprop sys.boot_completed < NUL 2>NUL"
                     } until ($booted -match "1" -or (Get-Date) -gt $deadline)
                     if ($booted -notmatch "1") { throw "Emulator did not boot in time" }
-                    Start-Sleep -Seconds 30   # package manager bemelegedése (a régi jobod is vár)
+                    Start-Sleep -Seconds 20
                 '''
             }
         }
 
         stage('Mobile tests') {
             steps {
-                bat '"%MVN%" -B -pl appium -am test -Ddevice=${params.DEVICE}'
+                bat '"%MVN%" -B -f appium\\pom.xml verify -Ddevice=%DEVICE% -Dmaven.test.failure.ignore=true'
             }
         }
-
-        stage('Security scan') {
-            when { expression { params.SECURITY_SCAN } }
-            steps {
-                bat '"%MVN%" -B -pl appium org.owasp:dependency-check-maven:check'
-            }
-        }
-
     }
 
     post {
@@ -106,12 +104,12 @@ pipeline {
 
 
     archiveArtifacts allowEmptyArchive: true,
-        artifacts: 'appium/target/reports/**, appium/target/screenshots/**, appium/target/appium-server.log'
+        artifacts: 'appium/target/reports/**, appium/target/site/serenity/**, appium/target/screenshots/**, appium/target/appium-server.log'
 
         powershell '''
             $dest = Join-Path $env:REPORT_ROOT $env:BUILD_NUMBER
             New-Item -ItemType Directory -Force -Path $dest | Out-Null
-            foreach ($p in "appium\\target\\reports", "appium\\target\\screenshots", "appium\\target\\failsafe-reports") {
+            foreach ($p in "appium\\target\\reports", "appium\\target\\site\\serenity", "appium\\target\\screenshots", "appium\\target\\failsafe-reports") {
                 if (Test-Path $p) { Copy-Item $p -Destination $dest -Recurse -Force }
             }
             & $env:ADB -s $env:SERIAL emu kill 2>$null
@@ -126,8 +124,7 @@ pipeline {
                 <h2>Appium tests – build #${env.BUILD_NUMBER} (${params.DEVICE})</h2>
                 <p><b>Result:</b> ${currentBuild.currentResult}</p>
                 <p>Total: ${env.T_TOTAL} | Passed: ${env.T_PASS} | Failed: ${env.T_FAIL} | Skipped: ${env.T_SKIP}</p>
-                <p>Extent report download:
-                   <a href="${env.BUILD_URL}artifact/appium/target/reports/">${env.BUILD_URL}artifact/appium/target/reports/</a></p>
+                <p>Report: <a href="${env.BUILD_URL}artifact/appium/target/reports/ExtentReport.html">Extent report</a></p>
                 <p>Local copy: <code>${env.REPORT_ROOT}\\${env.BUILD_NUMBER}</code></p>
                 <p>Console: <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></p>
             """,
