@@ -5,17 +5,19 @@ import io.appium.java_client.AppiumDriver;
 import io.appium.java_client.pagefactory.AppiumFieldDecorator;
 import org.mobil.config.DriverManager;
 import org.mobil.utils.WaitUtil;
-import org.openqa.selenium.By;
+import org.openqa.selenium.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import org.openqa.selenium.TimeoutException;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.Pause;
+import org.openqa.selenium.interactions.PointerInput;
+import org.openqa.selenium.interactions.Sequence;
 import org.openqa.selenium.support.PageFactory;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
+import java.util.List;
 
 public abstract class BasePage {
 
@@ -132,5 +134,25 @@ public abstract class BasePage {
             return "'" + text + "'";
         }
         return "concat('" + text.replace("'", "', \"'\", '") + "')";
+    }
+
+    protected void dragAndDrop(WebElement from, WebElement to) {
+        Point a = center(from.getRect());
+        Point b = center(to.getRect());
+
+        PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
+        Sequence drag = new Sequence(finger, 1)
+                .addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), a.x, a.y))
+                .addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()))
+                .addAction(new Pause(finger, Duration.ofMillis(800)))
+                .addAction(finger.createPointerMove(Duration.ofMillis(700), PointerInput.Origin.viewport(), b.x, b.y))
+                .addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
+
+        getDriver().perform(List.of(drag));
+        getDriver().resetInputState();
+    }
+
+    private Point center(Rectangle r) {
+        return new Point(r.x + r.width / 2, r.y + r.height / 2);
     }
 }

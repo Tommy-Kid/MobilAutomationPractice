@@ -83,8 +83,9 @@ public class NavBarPage extends BasePage {
         click(swipeTab);
     }
 
-    public void openDrag() {
+    public DragTabPage openDrag() {
         click(dragTab);
+        return new DragTabPage();
     }
 
     public void openMenu() {
