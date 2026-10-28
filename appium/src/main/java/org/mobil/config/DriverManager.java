@@ -3,6 +3,7 @@ package org.mobil.config;
 import io.appium.java_client.AppiumDriver;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.mobil.factory.PlatformAllocator;
 
 public class DriverManager {
 
@@ -31,7 +32,7 @@ public class DriverManager {
                 log.warn("Error while quitting driver: {}", e.getMessage());
             } finally {
                 driverThreadLocal.remove();
-                DevicePool.release();
+                PlatformAllocator.release();
             }
         }
     }

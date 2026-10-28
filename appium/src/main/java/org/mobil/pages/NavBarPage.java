@@ -48,11 +48,8 @@ public class NavBarPage extends BasePage {
      * a WebView, itt azonnal, érthető üzenettel bukik el - nem később, egy félrevezető hibával.
      */
     public WebPage openWebview() {
-        click(webviewTab);
         WebPage webPage = new WebPage();
-        if (!webPage.isOpened()) {
-            throw new IllegalStateException("A Web fülre kattintás után nem jelent meg a WebView");
-        }
+        openTab(webviewTab, webPage::isDisplayed, "WebView");
         log.info("Web fül megnyitva (selected={})", isSelected(webviewTab));
         return webPage;
     }
@@ -71,8 +68,9 @@ public class NavBarPage extends BasePage {
     }
 
     public LoginPage openLogin() {
-        click(loginTab);
-        return new LoginPage();
+        LoginPage loginPage = new LoginPage();
+        openTab(loginTab, loginPage::isDisplayed, "Login képernyő");
+        return loginPage;
     }
 
     public void openForms() {
@@ -84,8 +82,9 @@ public class NavBarPage extends BasePage {
     }
 
     public DragTabPage openDrag() {
-        click(dragTab);
-        return new DragTabPage();
+        DragTabPage dragPage = new DragTabPage();
+        openTab(dragTab, dragPage::isDisplayed, "Drag képernyő");
+        return dragPage;
     }
 
     public void openMenu() {

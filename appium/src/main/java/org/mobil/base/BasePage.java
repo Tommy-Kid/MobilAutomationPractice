@@ -14,10 +14,12 @@ import org.openqa.selenium.interactions.PointerInput;
 import org.openqa.selenium.interactions.Sequence;
 import org.openqa.selenium.support.PageFactory;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.function.Supplier;
 
 public abstract class BasePage {
 
@@ -35,6 +37,19 @@ public abstract class BasePage {
     protected void click(WebElement element) {
         WaitUtil.waitForClickability(element).click();
         log.debug("Clicked on element");
+    }
+
+    protected void openTab(WebElement tab, Supplier<Boolean> screenOpened, String screenName) {
+        new FluentWait<>(getDriver())
+                .withTimeout(Duration.ofSeconds(30))
+                .pollingEvery(Duration.ofMillis(500))
+                .ignoring(WebDriverException.class, TimeoutException.class)
+                .withMessage("A(z) " + screenName + " nem jelent meg a fülre kattintás után")
+                .until(d -> {
+                    new WebDriverWait(d, Duration.ofSeconds(3)).until(ExpectedConditions.elementToBeClickable(tab)).click();
+                    log.debug("Clicked on tab, waiting for {}", screenName);
+                    return screenOpened.get();
+                });
     }
 
     protected void sendKey(WebElement element, String text) {
