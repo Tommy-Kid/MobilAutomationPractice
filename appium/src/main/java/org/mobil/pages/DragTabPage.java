@@ -11,7 +11,7 @@ import java.util.List;
 public class DragTabPage extends BasePage {
 
     @AndroidFindBy(accessibility = "Drag-drop-screen")
-    @iOSXCUITFindBy(accessibility = "")
+    @iOSXCUITFindBy(accessibility = "Drag-drop-screen")
     WebElement screen;
 
     @AndroidFindBy(accessibility = "renew")

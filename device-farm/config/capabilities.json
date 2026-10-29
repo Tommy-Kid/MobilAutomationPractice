@@ -1,0 +1,13 @@
+{
+    "appium:newCommandTimeout": 180,
+    "appium:fullReset": false,
+    "appium:noReset": true,
+    "appium:dontStopAppOnReset": true,
+    "appium:wdaStartupRetries": 2,
+    "appium:wdaStartupRetryInterval": 10000,
+    "appium:wdaLaunchTimeout": 300000,
+    "appium:wdaConnectionTimeout": 300000,
+    "appium:shouldUseSingletonTestManager": false,
+    "df:liveVideo": false,
+    "df:recordVideo": false
+}

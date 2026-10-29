@@ -19,14 +19,15 @@ public interface Config extends org.aeonbits.owner.Config {
     @Key("appium.platformName")
     String platformName();
 
-    @Key("appium.platform.version")
-    String platformVersion();
-
     @Key("appium.automationName")
     String automationName();
 
     @Key("appium.app")
     String app();
+
+    @Key("appium.ios.app")
+    @DefaultValue("")
+    String iosApp();
 
     @Key("appium.noReset")
     boolean noReset();
@@ -36,19 +37,6 @@ public interface Config extends org.aeonbits.owner.Config {
 
     @Key("appium.autoGrantPermissions")
     boolean autoGrantPermissions();
-
-    // ---------- Eszközök ----------
-    @Key("device.pool")
-    String devicePool();
-
-    @Key("device.name.%s")
-    String deviceName(String device);
-
-    @Key("device.%s.udid")
-    String deviceUdid(String device);
-
-    @Key("device.%s.systemPort")
-    int deviceSystemPort(String device);
 
     // ---------- Keretrendszer beállítások ----------
     @Key("timeout.explicit.seconds")
